@@ -42,49 +42,54 @@ public class Simulator {
 	public static void loadProgram(String outFile) throws IOException {
 		
 		FileInputStream fis = new FileInputStream(outFile);
-		DataInputStream dis = new DataInputStream(fis);
 		
-		// If there is nothing in the file to read from
-		if (dis.available() <= 0) {
-			Errors.printFileContentError();
+		// try-with-resource block
+		try(DataInputStream dis = new DataInputStream(fis)){
+			
+			// If there is nothing in the file to read from
+			if (dis.available() <= 0) {
+				Errors.printFileContentError();
+			}
+			
+			// Referencing to the register file
+			RegisterFile registerFile = processor.getRegisterFile();
+			
+			// Reading the number of static variables in the file
+			int numOfStaticVariables = dis.readInt();
+			
+			// To store data into the memory
+			int addressCounter = 0;
+			
+			// Reading all the static variables
+			for (int i = 0; i < numOfStaticVariables; ++i) {
+				int value = dis.readInt();
+				
+				// Inserting data into the main memory
+				registerFile.getMainMemory().setAddressValue(addressCounter++, value);
+			}
+			
+			// Setting the program counter to the first instruction to read by IF unit
+			registerFile.setProgramCounter(addressCounter);
+			
+			// Reading all the instructions and inserting them into the memory
+			while(dis.available() > 0) {
+				
+				// Reading the instruction code
+				int instructionCode = dis.readInt();
+				
+				// Inserting the instruction code into the memory
+				registerFile.getMainMemory().setAddressValue(addressCounter++, instructionCode);
+			}
+			
+			// This holds the value of the location beyond the last instruction
+			registerFile.setLastInstructionCounter(addressCounter - 1);
+			
+			// Stack pointer and frame pointer
+			registerFile.setRegisterValue(1, addressCounter);
+			registerFile.setRegisterValue(2, addressCounter);
 		}
 		
-		// Referencing to the register file
-		RegisterFile registerFile = processor.getRegisterFile();
-		
-		// Reading the number of static variables in the file
-		int numOfStaticVariables = dis.readInt();
-		
-		// To store data into the memory
-		int addressCounter = 0;
-		
-		// Reading all the static variables
-		for (int i = 0; i < numOfStaticVariables; ++i) {
-			int value = dis.readInt();
-			
-			// Inserting data into the main memory
-			registerFile.getMainMemory().setAddressValue(addressCounter++, value);
-		}
-		
-		// Setting the program counter to the first instruction to read by IF unit
-		registerFile.setProgramCounter(addressCounter);
-		
-		// Reading all the instructions and inserting them into the memory
-		while(dis.available() > 0) {
-			
-			// Reading the instruction code
-			int instructionCode = dis.readInt();
-			
-			// Inserting the instruction code into the memory
-			registerFile.getMainMemory().setAddressValue(addressCounter++, instructionCode);
-		}
-		
-		// This holds the value of the location beyond the last instruction
-		registerFile.setLastInstructionCounter(addressCounter - 1);
-		
-		// Stack pointer and frame pointer
-		registerFile.setRegisterValue(1, addressCounter);
-		registerFile.setRegisterValue(2, addressCounter);
+		fis.close();
 	}
 	
 	// Performs simulation

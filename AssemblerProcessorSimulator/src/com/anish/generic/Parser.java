@@ -67,69 +67,73 @@ public class Parser {
 	}
 	
 	// This function parses the assembly code in the input file into byte code
+	@SuppressWarnings("deprecation")
 	public static void parseProgram(String inputFile) throws IOException {
 		
 		FileInputStream fis = new FileInputStream(inputFile);
-		DataInputStream dis = new DataInputStream(fis);
-		
-		// Reading the first line of the input file
-		String inputStringStatic = dis.readLine();
-		
-		// If the tag is missing
-		if (inputStringStatic.compareTo("\t.data") != 0)
-			Errors.printSyntaxError();
 		
 		int counter = 0;
 		
-		// Keep reading the next lines
-		while (dis.available() > 0) {
-			inputStringStatic = dis.readLine();
-			
-			// If all the static data is read
-			if (inputStringStatic.compareTo("\t.text") == 0)
-				break;
-			
-			// If an integer data is read
-			if (inputStringStatic.charAt(0) == '\t') {
-				
-				// Removing leading and trailing spaces
-				inputStringStatic = inputStringStatic.trim();
-				
-				// Getting the value
-				int value = Integer.parseInt(inputStringStatic);
-				
-				listOfStaticData.add(value);
-				
-				counter++;
-				
-				continue;
-			}
-			// If a label is encountered
-				
-			// Length of the label
-			int length = inputStringStatic.length();
-
-			inputStringStatic = inputStringStatic.substring(0, length - 1);
-			symbolTable.put(inputStringStatic, counter);
-		}
+		// try-with-resource block
+		try (DataInputStream dis = new DataInputStream(fis)) {
 		
-		// Reading all the lines to find out the functions present in the input file
-		while (dis.available() > 0) {
+			// Reading the first line of the input file
+			String inputStringStatic = dis.readLine();
 			
-			String inputString = dis.readLine();
+			// If the tag is missing
+			if (inputStringStatic.compareTo("\t.data") != 0)
+				Errors.printSyntaxError();
 			
-			// Adding the input string to the list of input strings
-			listOfInputStrings.add(inputString);
+			// Keep reading the next lines
+			while (dis.available() > 0) {
+				inputStringStatic = dis.readLine();
+				
+				// If all the static data is read
+				if (inputStringStatic.compareTo("\t.text") == 0)
+					break;
+				
+				// If an integer data is read
+				if (inputStringStatic.charAt(0) == '\t') {
+					
+					// Removing leading and trailing spaces
+					inputStringStatic = inputStringStatic.trim();
+					
+					// Getting the value
+					int value = Integer.parseInt(inputStringStatic);
+					
+					listOfStaticData.add(value);
+					
+					counter++;
+					
+					continue;
+				}
+				// If a label is encountered
+					
+				// Length of the label
+				int length = inputStringStatic.length();
+	
+				inputStringStatic = inputStringStatic.substring(0, length - 1);
+				symbolTable.put(inputStringStatic, counter);
+			}
 			
-			// If the string not is a function declaration
-			if (!isFunction(inputString))
-				continue;
-			
-			// If the string is a function declaration
-			String functionName = getFunctionName(inputString);
-			
-			// Inserting into the hash table
-			functionCheckTable.put(functionName, 1);
+			// Reading all the lines to find out the functions present in the input file
+			while (dis.available() > 0) {
+				
+				String inputString = dis.readLine();
+				
+				// Adding the input string to the list of input strings
+				listOfInputStrings.add(inputString);
+				
+				// If the string not is a function declaration
+				if (!isFunction(inputString))
+					continue;
+				
+				// If the string is a function declaration
+				String functionName = getFunctionName(inputString);
+				
+				// Inserting into the hash table
+				functionCheckTable.put(functionName, 1);
+			}
 		}
 		
 		// Storing the address of the first instruction
@@ -325,7 +329,7 @@ public class Parser {
 			}
 			
 			// For a 'ret' operation
-			if (operationType == operationType.ret) {
+			if (operationType == OperationType.ret) {
 				
 				// To store the return address value in x3
 				Instruction instrReturnAddressStore = getLoadInstruction(2, -1, 3);
@@ -647,25 +651,30 @@ public class Parser {
 	public static void assemble(String outputFile) throws IOException {
 		
 		FileOutputStream fos = new FileOutputStream(outputFile);
-		DataOutputStream dos = new DataOutputStream(fos);
 		
-		// Storing the number of static variables
-		int numberOfStaticVariables = listOfStaticData.size();
+		// try-with-resource block
+		try (DataOutputStream dos = new DataOutputStream(fos)) {
 		
-		// Writing the number of static variables into the output file
-		dos.writeInt(numberOfStaticVariables);
-		
-		// Writing all the static variables into the output file
-		for (Integer value : listOfStaticData)
-			dos.writeInt(value);
-		
-		// Generating byte code for all the instructions
-		for (Instruction instruction : listOfInstructions) {
-			int instructionCode = generateInstructionCode(instruction);
+			// Storing the number of static variables
+			int numberOfStaticVariables = listOfStaticData.size();
 			
-			// Writing the instruction code into the output file
-			dos.writeInt(instructionCode);
+			// Writing the number of static variables into the output file
+			dos.writeInt(numberOfStaticVariables);
+			
+			// Writing all the static variables into the output file
+			for (Integer value : listOfStaticData)
+				dos.writeInt(value);
+			
+			// Generating byte code for all the instructions
+			for (Instruction instruction : listOfInstructions) {
+				int instructionCode = generateInstructionCode(instruction);
+				
+				// Writing the instruction code into the output file
+				dos.writeInt(instructionCode);
+			}
 		}
+		
+		fos.close();
 	}
 	
 	// Converts instances of 'Instruction' into byte code and writes it into the output file
